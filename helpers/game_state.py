@@ -85,8 +85,15 @@ class Game:
         return village, elims
     
     def check_win_condition(self) -> Optional[str]:
-        """Check if either side has won. Returns 'village', 'elims', or None."""
+        """Check if either side has won. Returns 'village', 'elims', 'last_standing', or None."""
         village_count, elim_count = self.get_alive_count()
+        alive_players = self.get_alive_players()
+        
+        # Last man standing - only one player left
+        if self.win_condition == 'last_man_standing':
+            if len(alive_players) == 1:
+                return 'last_standing'
+            return None
         
         # Village wins if all elims dead
         if elim_count == 0:

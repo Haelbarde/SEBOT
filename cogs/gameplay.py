@@ -117,14 +117,58 @@ class GameplayCog(commands.Cog):
             if game_channel:
                 await game_channel.send("❌ Error processing automatic phase end. Please contact a GM.")
     
+    def _format_final_vote_count(self, game) -> str:
+        """Format a complete vote record for end of day."""
+        day_votes = game.get_day_votes()
+        
+        # Group votes by target
+        vote_groups = {}
+        for voter_id, target_id in day_votes.items():
+            if target_id not in vote_groups:
+                vote_groups[target_id] = []
+            vote_groups[target_id].append(voter_id)
+        
+        # Find players who didn't vote (abstained)
+        alive_players = [uid for uid, p in game.players.items() if p.is_alive]
+        abstainers = [uid for uid in alive_players if uid not in day_votes]
+        
+        # Build the output
+        lines = ["📊 **Final Vote Count**"]
+        
+        # Sort by vote count (descending)
+        sorted_targets = sorted(vote_groups.items(), key=lambda x: len(x[1]), reverse=True)
+        
+        for target_id, voter_ids in sorted_targets:
+            # Get target name
+            if target_id == 'vote_none':
+                target_name = "No Elimination"
+            else:
+                target_name = game.get_player_display_name(target_id)
+            
+            # Get voter names
+            voter_names = [game.get_player_display_name(vid) for vid in voter_ids]
+            lines.append(f"**{target_name}** ({len(voter_ids)}): {', '.join(voter_names)}")
+        
+        # Add abstainers
+        if abstainers:
+            abstainer_names = [game.get_player_display_name(uid) for uid in abstainers]
+            lines.append(f"**No Vote** ({len(abstainers)}): {', '.join(abstainer_names)}")
+        
+        return "\n".join(lines)
+    
     async def _process_day_end(self, guild, game, game_channel, dead_spec_thread):
         """Process end of day phase - handle elimination."""
         day_votes = game.get_day_votes()
+        
+        # Generate vote count before elimination (while all players still "alive" for display purposes)
+        vote_count_msg = self._format_final_vote_count(game)
+        
         elimination_msg = await self._resolve_elimination(guild, game, day_votes, dead_spec_thread)
         
         if game_channel:
             await game_channel.send(
                 f"☀️ **Day {game.day_number} has ended.**\n\n"
+                f"{vote_count_msg}\n\n"
                 f"{elimination_msg}\n\n"
                 f"🌙 **Night {game.day_number} begins...**"
             )
@@ -256,11 +300,29 @@ class GameplayCog(commands.Cog):
     async def _handle_game_over(self, guild, game, game_channel, winner):
         """Handle game ending."""
         if game_channel:
-            await game_channel.send(
-                f"🎊 **GAME OVER!**\n"
-                f"**{winner.title()} has won!**\n\n"
-                f"Archiving game channels..."
-            )
+            if winner == 'last_standing':
+                # Find the sole survivor
+                survivors = [p for p in game.players.values() if p.is_alive]
+                if survivors:
+                    survivor = survivors[0]
+                    winner_name = game.get_player_display_name(survivor.user_id)
+                    await game_channel.send(
+                        f"🎊 **GAME OVER!**\n"
+                        f"**{winner_name}** is the last one standing and wins!\n\n"
+                        f"Archiving game channels..."
+                    )
+                else:
+                    await game_channel.send(
+                        f"🎊 **GAME OVER!**\n"
+                        f"No one survived!\n\n"
+                        f"Archiving game channels..."
+                    )
+            else:
+                await game_channel.send(
+                    f"🎊 **GAME OVER!**\n"
+                    f"**{winner.title()} has won!**\n\n"
+                    f"Archiving game channels..."
+                )
         
         game.status = 'ended'
         await archive_game(guild, game)

@@ -99,11 +99,27 @@ class AdminCog(commands.Cog):
         if winner:
             game_channel = interaction.guild.get_channel(game.game_channel_id)
             if game_channel:
-                await game_channel.send(
-                    f"🎊 **GAME OVER!**\n"
-                    f"**{winner.title()} has won!**\n\n"
-                    f"Archiving game channels..."
-                )
+                if winner == 'last_standing':
+                    survivors = [p for p in game.players.values() if p.is_alive]
+                    if survivors:
+                        winner_name = game.get_player_display_name(survivors[0].user_id)
+                        await game_channel.send(
+                            f"🎊 **GAME OVER!**\n"
+                            f"**{winner_name}** is the last one standing and wins!\n\n"
+                            f"Archiving game channels..."
+                        )
+                    else:
+                        await game_channel.send(
+                            f"🎊 **GAME OVER!**\n"
+                            f"No one survived!\n\n"
+                            f"Archiving game channels..."
+                        )
+                else:
+                    await game_channel.send(
+                        f"🎊 **GAME OVER!**\n"
+                        f"**{winner.title()} has won!**\n\n"
+                        f"Archiving game channels..."
+                    )
             
             game.status = 'ended'
             await archive_game(interaction.guild, game)

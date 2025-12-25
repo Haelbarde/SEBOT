@@ -145,7 +145,7 @@ class SetupCog(commands.Cog):
         day_unit="Time unit for day length: 'minutes' or 'hours'",
         night_length="Length of night phases (use with night_unit)",
         night_unit="Time unit for night length: 'minutes' or 'hours'",
-        win_condition="Elims win condition: 'parity' or 'overparity'",
+        win_condition="Elims win condition: 'parity', 'overparity', or 'last_man_standing'",
         anon_mode="Enable anonymous mode: True or False",
         auto_phase_transition="Enable automatic phase transitions: True or False",
         allow_no_elimination="Allow voting for no elimination: True or False",
@@ -229,9 +229,9 @@ class SetupCog(commands.Cog):
                 changes.append(f"Night length: {night_length} minutes")
         
         if win_condition is not None:
-            if win_condition.lower() not in ['parity', 'overparity']:
+            if win_condition.lower() not in ['parity', 'overparity', 'last_man_standing']:
                 await interaction.response.send_message(
-                    "❌ Win condition must be 'parity' or 'overparity'",
+                    "❌ Win condition must be 'parity', 'overparity', or 'last_man_standing'",
                     ephemeral=True
                 )
                 return
